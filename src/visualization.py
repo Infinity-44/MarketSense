@@ -44,10 +44,25 @@ def price_chart(frame: pd.DataFrame, indicators=(), anomalies=None, kind="Line")
                                     name="Outlier", marker=dict(color=CORAL, size=8)), row=1, col=1)
     style_figure(figure, "")
     figure.update_layout(height=420, xaxis_rangeslider_visible=False, yaxis2_title="Volume")
-    figure.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])])
+    # Hide only dates absent from the source. Special Saturday/Sunday sessions
+    # must remain visible rather than being erased by a weekday assumption.
+    observed = pd.DatetimeIndex(frame.Date).normalize().unique()
+    calendar = pd.date_range(observed.min(), observed.max(), freq="D")
+    absent = calendar.difference(observed).strftime("%Y-%m-%d").tolist()
+    figure.update_xaxes(rangebreaks=[dict(values=absent)])
     figure.update_yaxes(side="right", tickformat=",.0f", row=1, col=1)
     figure.update_yaxes(side="right", tickformat=".2s", showgrid=False, row=2, col=1)
     return figure
+
+
+def price_backtest_chart(table: pd.DataFrame) -> go.Figure:
+    figure = go.Figure()
+    for column, label, color in [("actual_close", "Observed next close", TEAL),
+                                 ("predicted_close", "Held-out estimate", BLUE)]:
+        figure.add_trace(go.Scatter(x=table.LabelDate, y=table[column], name=label,
+                                    mode="lines+markers", line=dict(color=color, width=2),
+                                    marker=dict(size=4), hovertemplate="%{y:,.2f}<extra>" + label + "</extra>"))
+    return style_figure(figure, "", "Price · source units")
 
 
 def series_chart(frame: pd.DataFrame, column: str, title: str, percent=False) -> go.Figure:

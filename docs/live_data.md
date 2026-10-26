@@ -43,3 +43,9 @@ For the 5-month price experiment, validation selected Ridge regression. It produ
 - `app.py`: stock/lookback selectors and original analysis sections.
 
 Provider cookies/timezone caches remain under ignored `.cache/yfinance/`. Downloaded observations and saved artifacts stay in ignored data/models directories. Code contains no provider credentials. Saved live analyses include historical classifier/regressor models, deployment clones, metadata and both forecasts. Tests cover selected-window fitting, indicator context, training-only scaling, validation selection, MAE conventions, provider timestamps, partial bars, UI paths, failure states and artifact round-trips.
+
+## Polished analysis and reporting
+
+All data modes use one shared analysis service and the same deployment estimates across forecast pages. The Overview shows compact forecasts, descriptive baseline outcomes and risk/anomaly context; Price & Direction adds held-out actual-versus-estimated prices. Model Evaluation has classifier and regressor tabs with metric explanations. Source-absent dates are hidden on charts, while real special weekend sessions remain visible. Manual and pausable automatic quote refresh preserve plot zoom.
+
+A downloadable ZIP contains strict JSON metrics/metadata, a Markdown summary, selected daily observations and held-out price/direction/risk/anomaly tables. No executable model object is included in that ZIP. The separate local save action writes trusted project-generated joblib artifacts, including deployment copies. No model parameters were tuned as part of the presentation pass.

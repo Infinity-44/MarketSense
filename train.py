@@ -2,6 +2,7 @@
 import argparse
 from datetime import datetime, timezone
 import logging
+from pathlib import Path
 
 from config.settings import Settings
 from src.analysis import run_analysis, save_analysis
@@ -17,13 +18,17 @@ def main() -> int:
     parser.add_argument("--low-risk", type=float, default=0.15)
     parser.add_argument("--high-risk", type=float, default=0.30)
     parser.add_argument("--contamination", type=float, default=0.03)
+    parser.add_argument("--lookback-months", type=int, choices=[3, 5, 6, 12], help="Fit only these recent months; preceding data initializes indicators.")
+    parser.add_argument("--currency", choices=["INR", "USD", "Source units"], default="Source units", help="Price label only; does not convert values.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     try:
         settings = Settings(risk_window=args.risk_window, low_risk_limit=args.low_risk,
-                            high_risk_limit=args.high_risk, contamination=args.contamination)
+                            high_risk_limit=args.high_risk, contamination=args.contamination,
+                            min_observations=50 if args.lookback_months else 250)
         bars, audit = load_csv(args.data)
-        result = run_analysis(bars, settings, args.symbol, audit)
+        result = run_analysis(bars, settings, args.symbol, audit, lookback_months=args.lookback_months)
+        result["metadata"]["dataset_source"] = {"kind": "user-provided CSV", "filename": Path(args.data).name, "currency": args.currency}
         output = args.output or "models/run_" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
         folder = save_analysis(result, output)
     except (ValueError, OSError) as exc:
@@ -33,6 +38,10 @@ def main() -> int:
     print(f"Validation-selected model: {result['prediction']['selected']}")
     for name, metrics in result["prediction"]["test_metrics"].items():
         print(f"{name}: held-out accuracy={metrics['accuracy']:.3f}, macro-F1={metrics['f1_macro']:.3f}")
+    forecast = result["price_forecast"]
+    error = forecast["test_metrics"][forecast["selected_model"]]["price_mae"]
+    print(f"Next-session estimates: price={forecast['estimated_price']:.2f} ({args.currency}), direction={result['daily_deployment']['direction']}")
+    print(f"Price model: {forecast['selected_model']}; historical test MAE={error:.2f}. Outcomes unknown.")
     return 0
 
 

@@ -4,6 +4,19 @@
 
 MarketSense combines **current NSE observations with historical training data** to estimate short-term direction, measure historical risk and detect unusual behaviour. The redesigned Streamlit dashboard defaults to a free, keyless NSE feed with 3/5/6/12-month historical charts, a latest-price feed, and next-session price and direction estimates. It does not execute trades or promise investment returns.
 
+## Ready for demonstration
+
+- Consistent next-session forecasts across Overview and Market Behaviour.
+- Separate quote freshness, daily input date and forecast horizon.
+- Price and direction model comparisons, with plain-language metric help and visible baseline outcomes.
+- Held-out observed-versus-estimated price chart, table and CSV download.
+- Automatic quote refresh can be paused; manual refresh remains available.
+- Forecasts and full evaluation work with live NSE, CSV uploads and the cached real historical example.
+- Research ZIP and readable Markdown report downloads; local model/artifact saving.
+- Charts retain source-observed special weekend sessions and preserve zoom during refresh.
+
+Follow [the 8–10 minute demo guide](docs/DEMO.md). Tests and data verification are documented in [the implementation record](docs/implementation.md). Forecast accuracy remains experimental.
+
 ## Quick start
 
 Use **Python 3.11 or 3.12**. No API keys, paid services, or cloud infrastructure are required.
@@ -58,11 +71,14 @@ Require at least **301 valid daily bars**, yielding at least 250 labelled observ
 python train.py --data data/raw/aapl.us.txt --symbol AAPL
 python train.py --data data/raw/aapl.us.txt --symbol AAPL --output models/aapl_experiment_01
 python train.py --data data/raw/aapl.us.txt --symbol AAPL --risk-window 30 --low-risk 0.15 --high-risk 0.30 --contamination 0.03
+python train.py --data data/raw/reliance.csv --symbol RELIANCE.NS --lookback-months 5 --currency INR
 ```
 
-Output is a new directory containing `models.joblib`, `report.json`, feature/risk/anomaly CSVs, and held-out prediction tables. Existing run directories are protected from overwriting. Metadata includes the data hash, feature order, class names, parameters, split dates, runtime versions, and seed. **Only load joblib files you created or trust**, using matching dependency versions. The dashboard trains through the same service; it does not deserialize uploaded model files.
+Output is a new directory containing `models.joblib`, `report.json`, `summary.md`, `research_bundle.zip`, feature/risk/anomaly CSVs, and separate held-out direction/price prediction tables. The CLI and dashboard run the same classifier, regressor, risk and anomaly service. Existing run directories are protected from overwriting. Metadata includes the data hash, feature order, class names, parameters, split dates, runtime versions, and seed. **Only load joblib files you created or trust**, using matching dependency versions. The dashboard trains through the same service; it does not deserialize uploaded model files.
 
-The dashboard has six sections: Overview, Price & Direction, Market Behaviour, Risk Analysis, Anomaly Detection, and Model Evaluation. It displays the dataset's actual date range, source price units, cleaning audit, model selection criterion, held-out predictions, and unknown latest-row outcome. The redesigned overview pairs price/volume charts with a baseline-aware estimate panel and compact risk/outlier summaries. Chart controls offer 3M/6M/1Y/All and line/candlestick views. These change chart windows only; full-history summaries and held-out metrics stay fixed. A warm estimate color and an exploratory label flag weak held-out accuracy; this is a presentation rule, not a significance test.
+The dashboard has six sections: Overview, Price & Direction, Market Behaviour, Risk Analysis, Anomaly Detection, and Model Evaluation. The Overview combines historical price/volume, forecast cards, descriptive baseline outcomes, risk and anomaly summaries. Price & Direction adds held-out observed-versus-estimated prices and regression comparisons. Model Evaluation has separate direction and price tabs. Both NSE and offline modes use the same deployment estimates across pages.
+
+The sidebar 3M/5M/6M/1Y history selector changes live-source model fitting. Chart-window controls on indicator/risk/anomaly pages are display filters only. Quote age, forecast input date, small holdouts and model underperformance remain visible. Earlier indicators use preceding observations without fitting those earlier rows when a modelling window is selected.
 
 ## Architecture
 
@@ -84,7 +100,7 @@ flowchart LR
 ```
 
 ```text
-app.py                         Five-section Streamlit dashboard
+app.py                         Six-section Streamlit dashboard
 train.py                       Command-line training entry point
 config/settings.py             Validated, configurable assumptions
 src/live_data.py               Keyless NSE feeds, bar validation and timestamps
@@ -98,6 +114,7 @@ src/evaluation.py              Classification metrics
 src/risk_analysis.py           Historical and rolling risk
 src/anomaly_detection.py       Training-only Isolation Forest and score context
 src/analysis.py                Shared orchestration and artifact saving
+src/reporting.py               Baseline comparisons and portable research reports
 src/visualization.py           Plotly figures
 data/raw/                      Local source CSVs, ignored by Git
 data/processed/                Reserved for local analysis exports, ignored
@@ -116,7 +133,8 @@ The additions to the suggested structure are `src/analysis.py`, `train.py`, and 
 - **Features:** daily return, rolling mean returns, SMA 10/20/50, EMA 12/26, 20-bar volatility, RSI 14, MACD/signal, volume change/relative volume, 10-bar momentum, and intraday range. Price ratios reduce raw price-level dependence. All inputs are available at the observation's close.
 - **Target:** Bullish if the next supplied trading close is higher; Bearish for a negative or zero next return. The last row remains unlabelled. Three-class Neutral is deliberately deferred until a threshold can be justified and evaluated.
 - **Splits:** chronological 60/20/20 on feature-complete labelled rows. Remove training/validation rows whose next-close labels reach the following partition. No random shuffling.
-- **Models:** majority-class baseline, scaled Logistic Regression, depth-limited Random Forest, and shallow Gradient Boosting. Fixed hyperparameters avoid a large tuning search. Every model fits only training; select by validation macro-F1, including the baseline. No test refit. Ties follow model insertion order.
+- **Models:** majority-class baseline, scaled Logistic Regression, depth-limited Random Forest, and shallow Gradient Boosting. Fixed hyperparameters avoid a large tuning search. Every evaluated model fits training only; select by validation macro-F1, including the baseline. After evaluation, a separate deployment clone refits resolved labels; its future accuracy is unknown. Ties follow model insertion order.
+- **Price regression:** no-change baseline, scaled Ridge and depth-limited Random Forest; select by validation return MAE, then report held-out return/price MAE. Separate deployment copies estimate the next close.
 - **Metrics:** accuracy, macro precision/recall/F1, per-class report/support and confusion matrix, with explicit Bearish/Bullish ordering. Probabilities are **uncalibrated**. Feature importance reflects association, not causality.
 - **Risk:** sample historical standard deviation, annualization by √252, peak-to-current drawdown, positive-loss historical 95% one-day VaR, and downside deviation about zero. Current risk class uses rolling annualized volatility: Low <15%, Moderate 15% to <30%, High ≥30%, configurable. These teaching thresholds are not universal investment-risk ratings.
 - **Anomalies:** Isolation Forest uses training-period return, volatility, volume and range features, then scores later observations without refitting. Inverted decision function >0 indicates an outlier. Contamination controls the training threshold, not the future anomaly frequency. Top training-standard-deviation indicators provide context, not causal forest explanations.

@@ -14,7 +14,8 @@ from config.settings import Settings
 from src.anomaly_detection import fit_anomaly_detector, score_anomalies
 from src.evaluation import CLASS_NAMES
 from src.feature_engineering import FEATURE_COLUMNS, create_labels, engineer_features
-from src.market_prediction import chronological_split, train_and_evaluate
+from src.market_prediction import chronological_split, train_and_evaluate, refit_direction
+from src.price_prediction import estimate_next_price, price_summary
 from src.preprocessing import validate_ohlcv
 from src.risk_analysis import analyze_risk
 
@@ -35,6 +36,9 @@ def run_analysis(bars: pd.DataFrame, settings: Settings | None = None,
         # so a 50-bar moving average does not consume the entire 3-month sample.
         features = features.loc[features.Date >= cutoff].copy()
         bars = bars.loc[bars.Date >= cutoff].copy()
+    if settings.risk_window > len(bars) - 1:
+        raise ValueError(f"The {settings.risk_window}-observation risk window exceeds the available daily returns. "
+                         "Choose a shorter risk window or a longer historical lookback.")
     split = chronological_split(create_labels(features), settings)
     prediction = train_and_evaluate(split, settings)
     risk_frame, risk_summary = analyze_risk(bars, settings)
@@ -72,9 +76,12 @@ def run_analysis(bars: pd.DataFrame, settings: Settings | None = None,
                      "pandas": pd.__version__, "scikit_learn": sklearn.__version__,
                      "joblib": joblib.__version__},
     }
-    return {"bars": bars, "features": features, "split": split, "prediction": prediction,
+    result = {"bars": bars, "features": features, "split": split, "prediction": prediction,
             "risk_frame": risk_frame, "risk_summary": risk_summary, "detector": detector,
             "anomalies": anomalies, "latest_inference": latest_inference, "metadata": metadata}
+    result["daily_deployment"] = refit_direction(result)
+    result["price_forecast"] = estimate_next_price(result)
+    return result
 
 
 def save_analysis(result: dict, output: str | Path) -> Path:
@@ -94,15 +101,22 @@ def save_analysis(result: dict, output: str | Path) -> Path:
               "test": prediction["test_metrics"], "risk": result["risk_summary"],
               "latest_inference": result["latest_inference"]}
     if "price_forecast" in result:
-        report["price_forecast"] = {k: v for k, v in result["price_forecast"].items()
-                                    if k not in ("deployment_model", "historical_models")}
+        report["price_forecast"] = price_summary(result["price_forecast"])
     if "daily_deployment" in result:
         report["deployment_direction_forecast"] = result["daily_deployment"]
     (folder / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")
     for name, table in prediction["test_predictions"].items():
         table.to_csv(folder / f"test_{name.lower().replace(' ', '_')}.csv", index=False)
+    if "price_forecast" in result:
+        for name, table in result["price_forecast"]["test_predictions"].items():
+            table.to_csv(folder / f"price_test_{name.lower().replace(' ', '_')}.csv", index=False)
     result["features"].to_csv(folder / "features.csv", index=False)
     result["risk_frame"].to_csv(folder / "risk.csv", index=False)
     columns = ["Date", "Close", "anomaly", "anomaly_score", "period", "indicator_context"]
     result["anomalies"][columns].to_csv(folder / "anomalies.csv", index=False)
+    if "price_forecast" in result:
+        from src.reporting import analysis_bundle, markdown_summary
+
+        (folder / "summary.md").write_text(markdown_summary(result), encoding="utf-8")
+        (folder / "research_bundle.zip").write_bytes(analysis_bundle(result))
     return folder

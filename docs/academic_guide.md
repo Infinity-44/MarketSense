@@ -4,7 +4,7 @@
 
 Historical stock data contains price trends, changing volatility and unusual observations that are difficult to assess from raw tables. Build an understandable, reproducible application that predicts the next observed direction, measures historical risk, identifies statistical outliers and visualizes evidence without claiming investment certainty.
 
-Objectives: validate a real OHLCV dataset; generate causal indicators; compare three supervised classifiers and a simple baseline; quantify interpretable risk; apply historical-training-only Isolation Forest; present held-out results and limitations through a local interactive dashboard.
+Objectives: validate a real OHLCV dataset; generate causal indicators; compare three supervised classifiers and a simple baseline; evaluate Ridge/Random Forest price regression against no price change; quantify interpretable risk; apply historical-training-only Isolation Forest; present held-out results and limitations through a local interactive dashboard.
 
 ## System design and workflow
 
@@ -37,14 +37,7 @@ All four should run the CLI and explain one end-to-end observation. Use small br
 
 ## Demonstration sequence
 
-1. Start the dashboard and load a real stock file; show the source and date coverage.
-2. Explain the cleaning audit and after-close prediction timestamp.
-3. Show historical indicators and distinguish unknown latest inference from held-out test predictions.
-4. Show fixed chronological partitions, the majority baseline and selection on validation macro-F1.
-5. Explain the test confusion matrix, class balance and uncalibrated probabilities.
-6. Show historical risk formulas and change a risk threshold transparently.
-7. Show later-period anomaly markers and the training-fit cutoff; inspect indicator context.
-8. Save a run, inspect metadata, and show leakage/formula tests.
+Follow [DEMO.md](DEMO.md) for the timed 8–10 minute script. Start with NSE / RELIANCE / 5 months; show quote freshness and the completed daily input date; compare price estimates with held-out observations; inspect direction metrics, confusion matrices and baselines; then show risk, anomalies and downloadable research artifacts. The cached historical example or exported real-data report is the honest backup during provider outages.
 
 ## Viva questions to prepare
 

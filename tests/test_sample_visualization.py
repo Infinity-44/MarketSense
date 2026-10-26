@@ -49,3 +49,13 @@ def test_chart_window_keeps_anomaly_markers_within_selected_dates(ohlcv):
     assert figure.data[1].type == "bar"
     assert len(figure.data[2].x) == len(visible)
     assert min(figure.data[2].x) == visible.Date.min()
+
+
+def test_special_weekend_session_is_not_hidden(ohlcv):
+    # NSE can have special weekend sessions. Only source-absent dates may be hidden.
+    frame = ohlcv.iloc[:3].copy()
+    frame["Date"] = pd.to_datetime(["2026-10-23", "2026-10-24", "2026-10-26"])
+    figure = price_chart(frame)
+    hidden = figure.layout.xaxis.rangebreaks[0].values
+    assert "2026-10-24" not in hidden
+    assert "2026-10-25" in hidden

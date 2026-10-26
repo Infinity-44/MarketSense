@@ -8,12 +8,26 @@ from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.base import clone
 
 from config.settings import Settings
 from src.evaluation import classification_metrics
-from src.feature_engineering import FEATURE_COLUMNS
+from src.feature_engineering import FEATURE_COLUMNS, create_labels
 
 logger = logging.getLogger(__name__)
+
+
+def refit_direction(result: dict) -> dict:
+    """Refit a deployment clone after evaluation without replacing holdout models."""
+    labelled = create_labels(result["features"]).dropna(subset=FEATURE_COLUMNS + ["target", "LabelDate"])
+    model = clone(result["prediction"]["models"][result["prediction"]["selected"]])
+    model.fit(labelled[FEATURE_COLUMNS], labelled.target.astype(int))
+    result["daily_deployment_model"] = model
+    latest = result["features"].iloc[[-1]]
+    return {"direction": "Bullish" if model.predict(latest[FEATURE_COLUMNS])[0] else "Bearish",
+            "bullish_probability": float(model.predict_proba(latest[FEATURE_COLUMNS])[0, 1]),
+            "as_of": latest.Date.iloc[0].isoformat(), "training_label_end": labelled.LabelDate.max().isoformat(),
+            "note": "Deployment clone refitted on resolved historical labels after evaluation; next-session outcome unknown."}
 
 
 @dataclass
@@ -32,8 +46,8 @@ def chronological_split(labelled: pd.DataFrame, settings: Settings,
         raise ValueError("Features must have unique, chronologically sorted dates.")
     n = len(frame)
     if n < settings.min_observations:
-        raise ValueError(f"Need at least {settings.min_observations} labelled rows after the 50-bar "
-                         f"feature warm-up; found {n}. Supply roughly 301 or more valid bars.")
+        raise ValueError(f"Need at least {settings.min_observations} labelled rows after indicator warm-up; "
+                         f"found {n}. Choose a longer lookback or supply more daily history.")
     a = int(n * settings.train_fraction)
     b = int(n * (settings.train_fraction + settings.validation_fraction))
     if min(a, b - a, n - b) < 10:

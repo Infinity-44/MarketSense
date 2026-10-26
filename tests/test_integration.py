@@ -63,9 +63,10 @@ def test_dashboard_every_section_with_explicit_test_fixture(ohlcv, monkeypatch):
     app = AppTest.from_file(APP_PATH).run(timeout=30)
     app.sidebar.selectbox[0].set_value("Apple · AAPL (historical example)").run(timeout=30)
     assert not app.exception
-    assert len(app.metric) == 4
-    next(w for w in app.selectbox if w.label == "Chart style").set_value("Candlestick").run(timeout=30)
+    assert any(m.label == "Next-session price estimate" for m in app.metric)
+    next(w for w in app.radio if w.label == "Historical chart").set_value("Candlestick").run(timeout=30)
     assert not app.exception
+    app.sidebar.radio[0].set_value("Market Behaviour").run(timeout=30)
     next(w for w in app.radio if w.label == "Chart window").set_value("3M").run(timeout=30)
     assert not app.exception
     for section in ["Market Behaviour", "Risk Analysis", "Anomaly Detection", "Model Evaluation"]:
@@ -115,3 +116,50 @@ def test_live_feed_failure_does_not_fall_back_to_example(monkeypatch):
     assert len(app.error) == 1
     assert app.warning
     assert not app.metric
+
+
+def test_forecast_consistency_across_pages_and_refresh_control(monkeypatch, intraday):
+    import src.live_dashboard as dashboard
+    from streamlit.testing.v1 import AppTest
+
+    calls = []
+
+    def quote(symbol):
+        calls.append(symbol)
+        return {"bars": intraday, "fetched_at": "2026-10-26T12:00:00Z"}
+
+    monkeypatch.setattr(dashboard, "fetch_intraday", quote)
+    app = AppTest.from_file(APP_PATH).run(timeout=30)
+    overview_direction = next(m.value for m in app.metric if m.label == "Next-session direction estimate")
+    assert len(calls) == 1
+    next(w for w in app.toggle if w.label.startswith("Auto-refresh")).set_value(False).run(timeout=30)
+    assert len(calls) == 1
+    next(w for w in app.button if w.label == "Refresh price").click().run(timeout=30)
+    assert len(calls) == 2
+    app.sidebar.radio[0].set_value("Market Behaviour").run(timeout=30)
+    assert not app.exception
+    assert app.metric[0].value == overview_direction
+
+
+def test_quote_failure_keeps_daily_forecast_explicitly_labelled(monkeypatch):
+    import src.live_dashboard as dashboard
+    from streamlit.testing.v1 import AppTest
+
+    def fail(symbol):
+        raise ValueError("Quote request unavailable")
+
+    monkeypatch.setattr(dashboard, "fetch_intraday", fail)
+    app = AppTest.from_file(APP_PATH).run(timeout=30)
+    assert not app.exception
+    assert app.warning
+    assert any(m.label == "Last completed daily close" for m in app.metric)
+    assert any(m.label == "Next-session price estimate" for m in app.metric)
+
+
+def test_invalid_risk_settings_produce_actionable_error():
+    from streamlit.testing.v1 import AppTest
+
+    app = AppTest.from_file(APP_PATH).run(timeout=30)
+    next(w for w in app.number_input if w.label.startswith("Low / moderate")).set_value(40.0).run(timeout=30)
+    assert not app.exception
+    assert "ordered" in app.error[0].value

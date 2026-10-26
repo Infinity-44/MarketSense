@@ -13,9 +13,9 @@ Only `FEATURE_COLUMNS` enter the classifier; Date, next return, label date and t
 3. Allocate 60% training, 20% validation, 20% test in date order.
 4. Purge rows at the first two boundaries whenever `LabelDate >= next_partition_start`. Under a one-step horizon this removes one row per boundary.
 5. Fit all fixed candidate models only on training. Logistic Regression's StandardScaler lives in its Pipeline and never fits validation/test.
-6. Select highest validation macro-F1. Include the majority baseline; it can be the honest selected model. No hyperparameter search and no refitting are performed.
+6. Select highest validation macro-F1. Include the majority baseline; it can be the honest selected model. No hyperparameter search is performed; evaluated models remain fitted on training only.
 7. Evaluate all models on test for the final comparison. Do not change the model after reading test scores. A future experiment must reserve a fresh holdout or clearly disclose test reuse.
-8. Predict from the newest feature-complete bar with the selected training-period model. Its outcome is unknown and its training regime can be stale. Uploading another CSV creates a new experiment, rather than evaluating it against a previously saved frozen model.
+8. Refit separate deployment copies on all resolved labels after evaluation and predict from the newest feature-complete daily row. Historical scores stay attached to frozen holdout models. Overview and Market Behaviour use the same deployment estimate; their next-session outcomes remain unknown. The saved original latest_inference field is explicitly labelled training-period inference. Uploading another CSV creates a new experiment.
 
 Simple holdout validation is time-aware, but it measures only one regime. Expanding-window validation, with label purging inside each fold, is a future extension. Random K-fold is unsuitable here. A one-step purge prevents label overlap but does not eliminate serial dependence between adjacent feature windows.
 
@@ -26,6 +26,14 @@ The majority baseline tests whether the learned approach improves over class imb
 Accuracy is correct predictions / observations. Precision = TP/(TP+FP), recall = TP/(TP+FN), F1 = 2PR/(P+R). Macro scores average class-specific scores equally. Zero denominators use zero and explicit class supports reveal absent classes. Confusion matrices have actual classes on rows and predicted classes on columns, always `[Bearish, Bullish]`. Model probabilities are not calibrated. Do not interpret 60% model probability as empirically verified 60% certainty.
 
 Feature importance is absolute standardized coefficients for Logistic Regression, or impurity reduction for the tree models. Correlation, feature scale choices, and biased impurity importances limit interpretation. Baseline importance is unavailable.
+
+## Price estimation and report interpretation
+
+Ridge regression (L2 regularization, alpha 10, training-only standardization) and Random Forest regression (200 trees, depth 3, leaf size 5, seed 42) predict next-session return. A constant zero-return baseline predicts no price change. Select by lowest validation return MAE. Evaluate held-out prices as `Close[t] * (1 + predicted_return[t])`, against the actual next observed close. Separate deployment copies refit resolved labels after selection/evaluation. Actual-versus-estimated charts use held-out outcome dates only; future prices are never plotted as observations.
+
+MAE is historical average absolute error, not a forecast uncertainty interval. Model-quality labels describe historical macro-F1 or price-error differences against baselines; they are not a significance test or reliability rating. Holdouts below 30 observations receive a descriptive small-sample note; crossing that threshold does not establish statistical sufficiency. The classifier and regressor can disagree.
+
+For selected lookbacks, older data initializes trailing indicators while only selected-window rows enter fitting/evaluation. Daily inputs exclude unfinished sessions; the separate latest-price display may have a newer timestamp. See live_data.md for source/freshness details. CSV, cached example, live NSE and CLI all use the same analysis service.
 
 ## Historical risk
 
