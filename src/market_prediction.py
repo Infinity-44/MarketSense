@@ -24,8 +24,10 @@ class ChronologicalSplit:
     purged_rows: int
 
 
-def chronological_split(labelled: pd.DataFrame, settings: Settings) -> ChronologicalSplit:
-    frame = labelled.dropna(subset=FEATURE_COLUMNS + ["target", "LabelDate"]).copy()
+def chronological_split(labelled: pd.DataFrame, settings: Settings,
+                        feature_columns: list | None = None) -> ChronologicalSplit:
+    feature_columns = FEATURE_COLUMNS if feature_columns is None else feature_columns
+    frame = labelled.dropna(subset=feature_columns + ["target", "LabelDate"]).copy()
     if not frame["Date"].is_monotonic_increasing or frame["Date"].duplicated().any():
         raise ValueError("Features must have unique, chronologically sorted dates.")
     n = len(frame)
@@ -59,23 +61,25 @@ def model_candidates(seed: int) -> dict:
     }
 
 
-def train_and_evaluate(split: ChronologicalSplit, settings: Settings) -> dict:
+def train_and_evaluate(split: ChronologicalSplit, settings: Settings,
+                       feature_columns: list | None = None) -> dict:
+    feature_columns = FEATURE_COLUMNS if feature_columns is None else feature_columns
     models = model_candidates(settings.seed)
     validation_metrics = {}
     for name, model in models.items():
         logger.info("Training %s on %s bars", name, len(split.train))
-        model.fit(split.train[FEATURE_COLUMNS], split.train["target"].astype(int))
+        model.fit(split.train[feature_columns], split.train["target"].astype(int))
         validation_metrics[name] = classification_metrics(
-            split.validation["target"], model.predict(split.validation[FEATURE_COLUMNS]))
+            split.validation["target"], model.predict(split.validation[feature_columns]))
     # Baseline participates: if it wins, show that honestly in inference.
     selected = max(models, key=lambda name: validation_metrics[name]["f1_macro"])
     test_metrics, predictions = {}, {}
     for name, model in models.items():
-        predicted = model.predict(split.test[FEATURE_COLUMNS])
+        predicted = model.predict(split.test[feature_columns])
         test_metrics[name] = classification_metrics(split.test["target"], predicted)
         table = split.test[["Date", "LabelDate", "Close", "next_return", "target"]].copy()
         table["prediction"] = predicted
-        table["bullish_probability"] = model.predict_proba(split.test[FEATURE_COLUMNS])[:, 1]
+        table["bullish_probability"] = model.predict_proba(split.test[feature_columns])[:, 1]
         predictions[name] = table
     return {"models": models, "selected": selected, "validation_metrics": validation_metrics,
             "test_metrics": test_metrics, "test_predictions": predictions}

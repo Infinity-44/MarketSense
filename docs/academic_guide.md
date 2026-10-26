@@ -61,6 +61,6 @@ All four should run the CLI and explain one end-to-end observation. Use small br
 
 ## Limitations and future scope
 
-Current scope: binary daily direction, one CSV/instrument, fixed holdouts/parameters, no live feed, no calibrated probabilities, no deployment service, no anomaly ground truth, and historical teaching risk bands. Dataset vintage, corporate-action adjustments, survivorship bias, serial dependence, regime changes and repeated test inspection limit conclusions.
+Current scope: binary daily direction and next-session price regression, one instrument at a time, fixed holdouts/parameters, a free provider feed with possible delay, no calibrated probabilities, no deployment service, no anomaly ground truth, and historical teaching risk bands. Dataset vintage, corporate-action adjustments, survivorship bias, serial dependence, regime changes and repeated test inspection limit conclusions.
 
 Future work: expanding-window validation with purging; multiple instruments with per-symbol features and careful grouped time splits; stability checks across regimes; probability calibration using training-only time folds; explicit Neutral thresholds based on a documented economic/noise rationale; walk-forward retraining; persistent frozen-model inference; LOF novelty detection; and independently labelled anomaly benchmarks. Trading backtests and paid data integration are separate projects with additional assumptions.

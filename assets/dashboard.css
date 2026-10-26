@@ -1,0 +1,53 @@
+:root { --mint:#b8f275; --muted:#969d9a; --line:#29312d; }
+.stApp { background:#101512; }
+.block-container { max-width:1600px; padding:3.5rem 2.8rem 2rem; }
+[data-testid="stHeader"] { background:#101512ed; }
+[data-testid="stSidebar"] { background:#151b17; border-right:1px solid var(--line); }
+[data-testid="stSidebar"] > div:first-child { padding-top:2.2rem; }
+[data-testid="stSidebar"] hr { margin:1.5rem 0; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label p { font-size:.88rem; }
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] { gap:.45rem; }
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label { padding:.5rem .7rem; border-radius:8px; }
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked) { background:#273424; }
+h1 { font-size:2rem !important; font-weight:600 !important; letter-spacing:-.06em; padding-top:0 !important; }
+h2 { font-size:1.2rem !important; font-weight:550 !important; letter-spacing:-.025em; }
+h3 { font-size:1rem !important; font-weight:550 !important; }
+p,li { line-height:1.6; }
+[data-testid="stCaptionContainer"] { color:var(--muted); }
+[data-testid="stMetric"] { padding:1.25rem 1.4rem; border:1px solid var(--line); border-radius:12px; background:#171e19; min-height:128px; }
+[data-testid="stMetricLabel"] p { color:#aab2ad; font-size:.79rem; }
+[data-testid="stMetricValue"] { font-size:1.9rem; font-weight:500; letter-spacing:-.05em; }
+[data-testid="stVerticalBlockBorderWrapper"] > div { border-color:var(--line) !important; border-radius:12px !important; }
+[data-testid="stButton"] button, [data-testid="stDownloadButton"] button, [data-testid="stLinkButton"] a { border-radius:8px; font-weight:500; }
+[data-testid="stFileUploader"] { border-radius:10px; }
+[data-testid="stPlotlyChart"] { overflow:hidden; }
+[data-testid="stExpander"] { border-color:var(--line); }
+.brand { display:flex; align-items:center; gap:10px; font-size:23px; font-weight:650; letter-spacing:-1px; color:#f0f4ee; }
+.brand-icon { width:32px; height:32px; background:var(--mint); color:#182013; border-radius:9px; text-align:center; line-height:32px; font-size:21px; }
+.brand-sub { color:#7d8a81; font-size:10px; letter-spacing:2px; margin:8px 0 28px 42px; }
+.nav-label { color:#7d8a81; font-size:10px; letter-spacing:1.8px; margin:10px 0; }
+.topline { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+.breadcrumb { color:#8d9a92; font-size:12px; }
+.breadcrumb span { color:#e3e9e3; }
+.status { color:#b6d69d; font-size:10px; letter-spacing:1.1px; border:1px solid #354630; border-radius:20px; padding:5px 10px; white-space:nowrap; }
+.subheading { color:#969f98; font-size:14px; margin-top:-12px; margin-bottom:24px; }
+.instrument { display:flex; align-items:center; gap:13px; padding:2px 0 20px; }
+.instrument-icon { width:42px; height:42px; border-radius:11px; background:#273423; color:var(--mint); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:19px; }
+.instrument-name { font-size:15px; font-weight:600; }
+.instrument-meta { font-size:11px; color:#909c94; margin-top:3px; }
+.small-tag { display:inline-block; font-size:10px; letter-spacing:.8px; color:#b3c0b5; border:1px solid #354037; border-radius:5px; padding:3px 7px; margin-left:8px; }
+.signal { padding:18px 0 10px; color:var(--mint); font-size:29px; letter-spacing:-1px; font-weight:550; }
+.signal.down { color:#ed9b96; }
+.signal.neutral { color:#e1c58e; }
+.mini-label { font-size:10px; color:#96a498; letter-spacing:1.5px; margin-top:7px; }
+.insight { font-size:13px; color:#b4beb6; line-height:1.7; }
+.insight strong { color:#eef2eb; font-weight:500; }
+.hero { padding:20px 0 10px; max-width:650px; }
+.hero h2 { font-size:2.6rem !important; line-height:1.14; letter-spacing:-2px; }
+.hero p { color:#9eaaa1; font-size:15px; }
+.feature-tile { padding:18px; border:1px solid var(--line); border-radius:10px; min-height:130px; background:#171e19; }
+.feature-tile b { display:block; font-size:13px; color:#e6eee3; margin:10px 0 5px; }
+.feature-tile span { font-size:12px; color:#909e94; }
+.section-note { font-size:11px; color:#819087; padding:10px 0; }
+.footer { display:flex; justify-content:space-between; color:#728078; font-size:10px; border-top:1px solid var(--line); padding-top:18px; margin-top:24px; gap:15px; }
+@media(max-width:900px) { .block-container {padding:3rem 1.1rem 1rem;} [data-testid="stMetric"] {padding:1rem; min-height:105px;} .hero h2 {font-size:2rem !important;} .topline {flex-wrap:wrap;} }

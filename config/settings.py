@@ -19,8 +19,8 @@ class Settings:
         if not (0 < self.train_fraction < 1 and 0 < self.validation_fraction < 1
                 and self.train_fraction + self.validation_fraction < 1):
             raise ValueError("Train and validation fractions must leave a positive test set.")
-        if self.min_observations < 100 or self.risk_window < 2 or self.trading_days < 1:
-            raise ValueError("Require at least 100 observations, risk window >=2 and trading days >=1.")
+        if self.min_observations < 50 or self.risk_window < 2 or self.trading_days < 1:
+            raise ValueError("Require at least 50 observations, risk window >=2 and trading days >=1.")
         if not 0 < self.var_confidence < 1:
             raise ValueError("VaR confidence must lie between 0 and 1.")
         if not 0 < self.low_risk_limit < self.high_risk_limit:

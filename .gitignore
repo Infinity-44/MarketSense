@@ -27,3 +27,4 @@ token.json
 *.p12
 .ipynb_checkpoints/
 *.egg-info/
+.cache/

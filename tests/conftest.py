@@ -15,3 +15,14 @@ def ohlcv():
         "Low": np.minimum(opening, close) * 0.99, "Close": close,
         "Volume": rng.integers(10000, 100000, len(close)),
     })
+
+
+@pytest.fixture
+def intraday():
+    rng = np.random.default_rng(73)
+    dates = pd.DatetimeIndex([stamp for day in pd.bdate_range("2026-09-28", periods=20)
+                              for stamp in pd.date_range(day + pd.Timedelta(hours=9, minutes=15), periods=75, freq="5min")]).tz_localize("Asia/Kolkata")
+    close = 1400 * np.exp(np.cumsum(rng.normal(0, .0012, len(dates))))
+    return pd.DataFrame({"Date": dates, "Open": close, "High": close * 1.002,
+                         "Low": close * .998, "Close": close,
+                         "Volume": rng.integers(1000, 50000, len(dates))})

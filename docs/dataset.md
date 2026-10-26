@@ -1,4 +1,14 @@
-# Dataset acquisition and provenance
+# Dataset sources
+
+The default dashboard source is **current NSE data from Yahoo Finance via yfinance**: daily history with selectable 3/5/6/12-month modelling windows plus completed five-minute bars for the latest quote. See [live-data methodology](live_data.md) for IST handling, freshness rules, evaluation, provider terms, and actual verification. CSV inputs and the following public examples are optional alternatives. Live requests require internet; local CSV analysis works offline.
+
+## Offline acquisition and provenance
+
+## Built-in real-data example
+
+The optional Apple example uses the historical CSV used in [Plotly's official chart documentation](https://plotly.com/python/candlestick-charts/): https://raw.githubusercontent.com/plotly/datasets/master/finance-charts-apple.csv . It downloads on first use into `data/raw/aapl_example.csv`, which Git ignores. There are 506 actual observations from 2015-02-17 through 2017-02-16. No source rows were removed in the verified download. The accompanying `.source.json` records the upstream URL and original-content hash. Downloads are size-limited, validated and cached; network failure leaves an actionable upload flow.
+
+The adapter renames only AAPL.Open/High/Low/Close/Volume, preserving the raw OHLC consistently. It does not mix AAPL.Adjusted with raw OHLC. Prices are historical unadjusted USD, not today's split-adjusted prices. This short public example is for local demonstration; the project does not redistribute its bytes or assert that the project MIT license covers upstream datasets. Prefer the separately CC0-labelled Kaggle dataset below for the academic report.
 
 ## Recommended source
 

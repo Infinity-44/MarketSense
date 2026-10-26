@@ -20,11 +20,21 @@ from src.risk_analysis import analyze_risk
 
 
 def run_analysis(bars: pd.DataFrame, settings: Settings | None = None,
-                 symbol: str = "Uploaded stock", audit: dict | None = None) -> dict:
+                 symbol: str = "Uploaded stock", audit: dict | None = None,
+                 lookback_months: int | None = None) -> dict:
     settings = settings or Settings()
     bars, verification = validate_ohlcv(bars)
     audit = audit or verification
     features = engineer_features(bars)
+    source_rows = len(bars)
+    if lookback_months is not None:
+        if lookback_months not in (3, 5, 6, 12):
+            raise ValueError("Choose a 3, 5, 6 or 12 month history window.")
+        cutoff = bars.Date.max() - pd.DateOffset(months=lookback_months)
+        # Compute causal indicator context before selecting the modelling window,
+        # so a 50-bar moving average does not consume the entire 3-month sample.
+        features = features.loc[features.Date >= cutoff].copy()
+        bars = bars.loc[bars.Date >= cutoff].copy()
     split = chronological_split(create_labels(features), settings)
     prediction = train_and_evaluate(split, settings)
     risk_frame, risk_summary = analyze_risk(bars, settings)
@@ -51,6 +61,7 @@ def run_analysis(bars: pd.DataFrame, settings: Settings | None = None,
         "symbol": symbol, "cleaned_data_sha256": hashlib.sha256(csv).hexdigest(),
         "data_start": bars.Date.min().isoformat(), "data_end": bars.Date.max().isoformat(),
         "data_rows": len(bars), "audit": audit, "settings": settings.to_dict(),
+        "lookback_months": lookback_months, "source_rows_before_lookback": source_rows,
         "feature_columns": FEATURE_COLUMNS, "class_names": CLASS_NAMES,
         "target": "1 if next observed trading close / current close - 1 > 0, else 0",
         "split_periods": periods, "purged_rows": split.purged_rows,
@@ -73,10 +84,20 @@ def save_analysis(result: dict, output: str | Path) -> Path:
     prediction = result["prediction"]
     artifact = {"metadata": result["metadata"], "models": prediction["models"],
                 "detector": result["detector"]}
+    if "daily_deployment_model" in result:
+        artifact["deployment_direction_model"] = result["daily_deployment_model"]
+    if "price_forecast" in result:
+        artifact["deployment_price_model"] = result["price_forecast"]["deployment_model"]
+        artifact["historical_price_models"] = result["price_forecast"]["historical_models"]
     joblib.dump(artifact, folder / "models.joblib")
     report = {"metadata": result["metadata"], "validation": prediction["validation_metrics"],
               "test": prediction["test_metrics"], "risk": result["risk_summary"],
               "latest_inference": result["latest_inference"]}
+    if "price_forecast" in result:
+        report["price_forecast"] = {k: v for k, v in result["price_forecast"].items()
+                                    if k not in ("deployment_model", "historical_models")}
+    if "daily_deployment" in result:
+        report["deployment_direction_forecast"] = result["daily_deployment"]
     (folder / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")
     for name, table in prediction["test_predictions"].items():
         table.to_csv(folder / f"test_{name.lower().replace(' ', '_')}.csv", index=False)

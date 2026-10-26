@@ -2,7 +2,7 @@
 
 **Market Behaviour, Risk and Anomaly Analysis** — a local, educational machine-learning mini-project for a team of four.
 
-MarketSense reads real daily OHLCV data, compares next-observation direction classifiers, measures historical risk, and detects statistical outliers. A dark Streamlit dashboard makes the methods and their limitations visible. It does not execute trades or promise investment returns.
+MarketSense combines **current NSE observations with historical training data** to estimate short-term direction, measure historical risk and detect unusual behaviour. The redesigned Streamlit dashboard defaults to a free, keyless NSE feed with 3/5/6/12-month historical charts, a latest-price feed, and next-session price and direction estimates. It does not execute trades or promise investment returns.
 
 ## Quick start
 
@@ -30,11 +30,21 @@ streamlit run app.py
 
 If PowerShell blocks activation, use `.\.venv\Scripts\python.exe -m pip ...` and `.\.venv\Scripts\python.exe -m streamlit run app.py` directly. Installing dependencies requires internet once; analysis then runs offline. On the development machine, an existing Anaconda installation was used to create a project-local Python 3.12 environment: `.venv/bin/python -m streamlit run app.py` works directly.
 
-## Get real data
+## NSE history-based estimates — default
+
+Open the dashboard, leave **NSE · live + historical** selected, choose a stock and select **3 months, 5 months, 6 months or 1 year**. This window controls both the historical chart and the model's training/evaluation rows. Earlier daily data only warms up causal indicators such as SMA 50.
+
+The dashboard shows the latest available NSE price plus **both next-session closing-price and Bullish/Bearish direction estimates**. Latest prices refresh every 60 seconds. Five-minute bars supply that quote only; forecasts use the selected months of completed daily observations. Price models are compared with a no-price-change baseline; direction models with a majority baseline. The UI shows actual test scores, sample sizes and price MAE. No accuracy is guaranteed, especially with small 3-month samples.
+
+No API key or paid account is required. The feed may be delayed or rate-limited. Quotes and forecasts have explicit timestamps; an unfinished daily candle is not treated as a completed model input. See [full methodology, freshness rules and actual verification](docs/live_data.md).
+
+## Offline CSV and historical example
 
 Download [Boris Marjanovic's Huge Stock Market Dataset](https://www.kaggle.com/datasets/borismarjanovic/price-volume-data-for-all-us-stocks-etfs/) from Kaggle. Its data card lists **CC0 / Public Domain**, adjusted OHLCV, and a final update in November 2017. A free Kaggle account may be needed; the project does not need a Kaggle API token.
 
-Extract one file, such as `Stocks/aapl.us.txt`, into `data/raw/`, or upload it in the dashboard. The `.txt` extension is supported because the content is CSV. Do not rename or concatenate different instruments into one series.
+An optional **Apple historical example**, selected explicitly in the sidebar, provides 506 daily observations from 17 February 2015 to 16 February 2017, using the public CSV from [Plotly's official candlestick documentation](https://plotly.com/python/candlestick-charts/). It downloads once into ignored local storage and then works offline. No signup or API key is required. This example uses consistent unadjusted OHLC in USD; it is not current market data. Its source link and SHA-256 are recorded locally. The data is not bundled or redistributed with the project code.
+
+For your academic experiment, use the larger CC0 dataset above. Extract one file, such as `Stocks/aapl.us.txt`, into `data/raw/`, or choose **Upload / local CSV** in the sidebar and upload it. The `.txt` extension is supported because the content is CSV. Do not rename or concatenate different instruments into one series.
 
 ```text
 Date,Open,High,Low,Close,Volume
@@ -52,7 +62,7 @@ python train.py --data data/raw/aapl.us.txt --symbol AAPL --risk-window 30 --low
 
 Output is a new directory containing `models.joblib`, `report.json`, feature/risk/anomaly CSVs, and held-out prediction tables. Existing run directories are protected from overwriting. Metadata includes the data hash, feature order, class names, parameters, split dates, runtime versions, and seed. **Only load joblib files you created or trust**, using matching dependency versions. The dashboard trains through the same service; it does not deserialize uploaded model files.
 
-The dashboard has five sections: Overview, Market Behaviour, Risk Analysis, Anomaly Detection, and Model Evaluation. It displays the dataset's actual date range, source price units, cleaning audit, model selection criterion, held-out predictions, and unknown latest-row outcome.
+The dashboard has six sections: Overview, Price & Direction, Market Behaviour, Risk Analysis, Anomaly Detection, and Model Evaluation. It displays the dataset's actual date range, source price units, cleaning audit, model selection criterion, held-out predictions, and unknown latest-row outcome. The redesigned overview pairs price/volume charts with a baseline-aware estimate panel and compact risk/outlier summaries. Chart controls offer 3M/6M/1Y/All and line/candlestick views. These change chart windows only; full-history summaries and held-out metrics stay fixed. A warm estimate color and an exploratory label flag weak held-out accuracy; this is a presentation rule, not a significance test.
 
 ## Architecture
 
@@ -77,6 +87,9 @@ flowchart LR
 app.py                         Five-section Streamlit dashboard
 train.py                       Command-line training entry point
 config/settings.py             Validated, configurable assumptions
+src/live_data.py               Keyless NSE feeds, bar validation and timestamps
+src/price_prediction.py        Historical price regression, MAE and deployment estimates
+src/live_dashboard.py          Historical chart, latest quote, estimates and exports
 src/data_loader.py             CSV reading
 src/preprocessing.py           Schema checks, conservative cleaning and audit
 src/feature_engineering.py     Causal indicators and separate target creation
@@ -112,7 +125,7 @@ See [methodology and equations](docs/methodology.md) for the full protocol and [
 
 ## Model comparison and evidence
 
-No benchmark scores are hardcoded. Run the CLI on the acquired dataset to generate a genuine comparison in `report.json`, or inspect Model Evaluation in the dashboard. Both validation and held-out test comparisons are saved. A test score above 50% does not establish predictability, statistical significance, or profitability.
+No benchmark scores are hardcoded. Run the CLI on the acquired dataset to generate a genuine comparison in `report.json`, or inspect Model Evaluation in the dashboard. Both validation and held-out test comparisons are saved. A test score above 50% does not establish predictability, statistical significance, or profitability. An actual run on the downloaded Apple example selected Random Forest by validation macro F1 and measured 44.6% held-out accuracy versus 43.5% for the training-majority baseline over 92 test observations. This is weak forecasting evidence, not an accurate trading signal; the interface says so. No model was changed after inspecting these results.
 
 Automated tests check causal feature invariance under future perturbation, unknown final labels, boundary purging, training-only scaling/anomaly statistics, known risk formulas, artifact round-trips, and all dashboard sections. See [implementation record](docs/implementation.md) for completed phases and verification status.
 

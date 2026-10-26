@@ -4,20 +4,26 @@ The workspace was empty at inspection. The architecture, data strategy, ML proto
 
 | Phase | Objective and completed work | Check / command | Remaining dependency |
 |---|---|---|---|
-| 1 · setup/loading | Config, dependencies, CSV schema contract | `python -m pytest tests/test_data.py -q` | Acquire a real stock CSV |
+| 1 · setup/loading | Config, dependencies, CSV schema contract | `python -m pytest tests/test_data.py -q` | Optional CSV acquisition; NSE feed is available |
 | 2 · preprocessing/EDA | Conservative cleaning, audit, notebook workflow | Same ingestion tests; run EDA notebook | Actual-data EDA needs acquisition |
 | 3 · features | Causal indicators, unknown final label | `python -m pytest tests/test_features_prediction.py -q` | None in software |
-| 4 · classification | Pipelines, purged 60/20/20, baseline, validation selection, test metrics | Same prediction tests; `python train.py --data data/raw/aapl.us.txt --symbol AAPL` | Real financial evaluation needs acquisition |
+| 4 · classification | Pipelines, purged 60/20/20, baseline, validation selection, test metrics | Same prediction tests; `python train.py --data data/raw/aapl.us.txt --symbol AAPL` | Verified with actual NSE provider history |
 | 5 · risk | Historical/rolling risk, configurable categories | `python -m pytest tests/test_risk_anomalies.py -q` | Empirical interpretation on real data |
 | 6 · anomalies | Training-only forest, later scores, indicator context | Same risk/anomaly tests | No ground-truth anomaly labels supplied |
-| 7 · dashboard | Five sections, Plotly, downloads, save action, empty state | `streamlit run app.py`; AppTest in integration tests | Real-data demonstration |
+| 7 · dashboard | Six sections, Plotly, downloads, save action, empty state | `streamlit run app.py`; AppTest in integration tests | Verified with current NSE history |
 | 8 · verification/docs | Pipeline round-trip, UI navigation, docs, GitHub CI, credential preflight | `python -m pytest -q`; `python scripts/check_secrets.py` | Remote CI runs only after publication |
 
 Tests intentionally use deterministic synthetic fixtures to verify software behaviour. They do not establish financial-model performance. A fixture shock test only checks that extreme indicator values can be flagged. No dataset or benchmark scores are silently manufactured.
 
-Local verification: **15 tests passed on Python 3.12**, including all dashboard sections. A Streamlit-internal pandas deprecation warning is present; it does not fail the checks. Python 3.11 and Windows execution are configured in the manual CI matrix but have not yet been verified remotely. The workflow does not run on push, avoiding automatic hosted compute usage. The tracked-file credential preflight passed before initial publication; it is a heuristic, not a guarantee of detecting all secrets.
+Local verification after the dashboard redesign: **26 tests passed on Python 3.12**, covering all dashboard sections, candlesticks, chart windows, sample normalization/cache, actionable download failure and artifact round-trips. An actual CLI run processed all 506 Apple example bars without cleaning removals and produced genuine reports in an ignored local run directory. The selected Random Forest measured 44.6% held-out accuracy over 92 test observations; this weak result is visible in the UI. No model parameters were changed in this redesign. Python 3.11 and Windows execution are configured in the manual CI matrix but have not yet been verified remotely. The workflow does not run on push, avoiding automatic hosted compute usage. The tracked-file credential preflight passed before initial publication; it is a heuristic, not a guarantee of detecting all secrets.
 
 The EDA notebook imports reusable source functions and contains no duplicated training implementation. CLI runs write new artifact directories rather than changing source data. All result charts and tables derive from the selected input. No screenshots with invented financial data are included.
+
+## NSE history and price-estimate extension
+
+The final flow uses selected 3/5/6/12-month daily history for both model fitting and charting. The latest NSE quote refreshes separately every 60 seconds. The app displays next-session price and direction estimates, validation-selected baseline comparisons, held-out metrics, and timestamps.
+
+Verified actual RELIANCE.NS responses: 1,236 daily bars and 1,394 quote-source bars. The 5-month modelling subset had 105 daily sessions and the 3-month subset 63. Separate deployment clones refit only after frozen historical evaluation; saved runs include those models and forecasts. See live_data.md for actual measured results and limitations. No paid service or credentials were added.
 
 ## Reproduction checklist
 
